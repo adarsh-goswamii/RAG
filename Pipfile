@@ -1,0 +1,23 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+fastapi = "*"
+uvicorn = "*"
+python-dotenv = "*"
+requests = "*"
+starlette = "*"
+pydantic-settings = "*"
+faiss-cpu = "*"
+numpy = "*"
+sentence-transformers = "*"
+ollama = "*"
+elasticsearch8 = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.11"
+python_full_version = "3.11.10"
