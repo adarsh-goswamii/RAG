@@ -69,7 +69,11 @@ class ElasticVectorDB:
                         "similarity": "cosine",
                     },
                     "content": {"type": "text"},
-                    "metadata": {"type": "object"},
+                    "metadata": {
+                        "properties": {
+                            "source": {"type": "keyword"},
+                        }
+                    },
                 }
             }
         }
@@ -81,8 +85,11 @@ class ElasticVectorDB:
 
     # ... (rest of your add_vector and search methods remain the same)
 
-    def add_vector(self, embedding: List[float], content: str, metadata: Dict[str, Any] | None = None):
-        doc = {"embedding": embedding, "content": content, "metadata": metadata or {}}
+    def add_vector(self, embedding: List[float], content: str, metadata: Dict[str, Any] | None = None, source: str | None = None):
+        meta = dict(metadata or {})
+        if source:
+            meta["source"] = source
+        doc = {"embedding": embedding, "content": content, "metadata": meta}
         self.client.index(index=self.index_name, document=doc)
 
     def search(self, query_embedding: List[float], k: int = 5) -> List[Dict[str, Any]]:
@@ -103,6 +110,43 @@ class ElasticVectorDB:
             }
             for hit in response["hits"]["hits"]
         ]
+
+    def list_docs(self) -> List[Dict[str, Any]]:
+        if not self.client.indices.exists(index=self.index_name):
+            return []
+        resp = self.client.search(
+            index=self.index_name,
+            body={
+                "size": 0,
+                "aggs": {
+                    "by_source": {
+                        "terms": {"field": "metadata.source", "size": 10000},
+                        "aggs": {
+                            "first_chunk": {
+                                "top_hits": {"size": 1, "_source": ["content"]}
+                            }
+                        },
+                    }
+                },
+            },
+        )
+        out: List[Dict[str, Any]] = []
+        for bucket in resp["aggregations"]["by_source"]["buckets"]:
+            source: str = bucket["key"]
+            chunks: int = bucket["doc_count"]
+            hits = bucket["first_chunk"]["hits"]["hits"]
+            summary: str | None = None
+            if hits:
+                content: str = hits[0]["_source"].get("content", "")
+                first_line = content.split("\n", 1)[0].strip()
+                summary = first_line[:120] if first_line else None
+            out.append({
+                "file": source.split("/")[-1],
+                "path": source,
+                "chunks": chunks,
+                "summary": summary,
+            })
+        return sorted(out, key=lambda x: x["path"])
 
     def delete_database(self):
         if self.client.indices.exists(index=self.index_name):

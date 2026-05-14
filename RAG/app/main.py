@@ -3,6 +3,7 @@ from starlette.middleware.cors import CORSMiddleware
 import uvicorn
 from starlette.middleware.gzip import GZipMiddleware
 from app.libs.elasticsearch_db import ElasticVectorDB, get_elastic_db
+from typing import Any
 
 from app.config import get_settings
 from app.routes.v1 import main as v1_routes
@@ -40,6 +41,13 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.include_router(v1_routes.api_router)
+
+
+@app.get("/docs", response_model=list[dict[str, Any]])
+def list_docs():
+    """Return all indexed markdown files with chunk counts and first-line summaries."""
+    return get_elastic_db().list_docs()
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=4001)
