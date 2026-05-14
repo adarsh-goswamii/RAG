@@ -3,8 +3,8 @@ from __future__ import annotations
 import sys
 import os
 
-# Allow running from the RAG/ directory: `python mcp_server.py`
-sys.path.insert(0, os.path.dirname(__file__))
+# Allow `python mcp_server.py` from any cwd by anchoring to this file's directory.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from typing import Any
 
